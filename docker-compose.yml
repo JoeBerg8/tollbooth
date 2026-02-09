@@ -1,0 +1,77 @@
+name: inbox-toll
+
+services:
+  # PostgreSQL database for storing processed email metadata
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    container_name: inbox-toll-postgres
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      POSTGRES_DB: ${DATABASE_NAME:-inboxtoll}
+    ports:
+      - "${DATABASE_PORT:-5432}:5432"
+    volumes:
+      - inbox_toll_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-postgres} -d ${DATABASE_NAME:-inboxtoll}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Inbox Toll application
+  app:
+    build: .
+    restart: unless-stopped
+    container_name: inbox-toll-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Database Configuration
+      # Connection string for PostgreSQL (automatically constructed from db service)
+      DATABASE_URL: jdbc:postgresql://db:5432/${DATABASE_NAME:-inboxtoll}
+      DATABASE_USER: ${DATABASE_USER:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      
+      # Gmail Configuration (REQUIRED)
+      # JSON credentials from Google Cloud Console (see README for setup instructions)
+      GMAIL_CREDENTIALS_JSON: ${GMAIL_CREDENTIALS_JSON}
+      # Your Gmail address that will be protected by the toll
+      GMAIL_EMAIL: ${GMAIL_EMAIL}
+      
+      # Stripe Configuration (REQUIRED)
+      # Your Stripe secret API key (starts with sk_)
+      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      # Stripe webhook signing secret (starts with whsec_)
+      # Get this from Stripe Dashboard > Developers > Webhooks
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      
+      # Toll Configuration
+      # Amount to charge senders in dollars (default: $0.25)
+      TOLL_AMOUNT: ${TOLL_AMOUNT:-0.25}
+      # Comma-separated list of domains exempt from toll (e.g., "example.com,partner.org")
+      TRUSTED_DOMAINS: ${TRUSTED_DOMAINS:-}
+      # How often to poll Gmail for new emails in seconds (default: 60)
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-60}
+      
+      # Stripe Checkout URLs (REQUIRED)
+      # URL to redirect senders after successful payment
+      TOLL_SUCCESS_URL: ${TOLL_SUCCESS_URL:-https://example.com/success}
+      # URL to redirect senders if they cancel payment
+      TOLL_CANCEL_URL: ${TOLL_CANCEL_URL:-https://example.com/cancel}
+      
+      # Email Template Configuration (optional)
+      # Subject line for payment request emails (supports {tollAmount} placeholder)
+      TOLL_EMAIL_SUBJECT: ${TOLL_EMAIL_SUBJECT:-Payment required to reach my inbox}
+      # Body template for payment request emails (supports {tollAmount}, {paymentLink}, {senderEmail} placeholders)
+      # If not set, uses a simple default template
+      TOLL_EMAIL_BODY: ${TOLL_EMAIL_BODY:-}
+      # Display name for sent emails (defaults to Gmail email address if not set)
+      TOLL_EMAIL_FROM_NAME: ${TOLL_EMAIL_FROM_NAME:-}
+    ports:
+      - "${PORT:-8080}:8080"
+
+volumes:
+  inbox_toll_postgres_data:

@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: inbox-toll
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/inboxtoll}
+    username: ${DATABASE_USER:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+logging:
+  level:
+    root: INFO
+    com.tollbooth: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+server:
+  port: ${PORT:8080}
+
+# Gmail Configuration
+gmail:
+  credentials-json: ${GMAIL_CREDENTIALS_JSON}
+  email: ${GMAIL_EMAIL}
+
+# Stripe Configuration
+stripe:
+  api-key: ${STRIPE_API_KEY}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+
+# Toll Configuration
+toll:
+  gmail-email: ${GMAIL_EMAIL}
+  toll-amount: ${TOLL_AMOUNT:0.25}
+  trusted-domains: ${TRUSTED_DOMAINS:}
+  poll-interval-seconds: ${POLL_INTERVAL_SECONDS:60}
+  success-url: ${TOLL_SUCCESS_URL:https://example.com/success}
+  cancel-url: ${TOLL_CANCEL_URL:https://example.com/cancel}
+  email-subject: ${TOLL_EMAIL_SUBJECT:Payment required to reach my inbox}
+  email-body: ${TOLL_EMAIL_BODY:}
+  email-from-name: ${TOLL_EMAIL_FROM_NAME:}
