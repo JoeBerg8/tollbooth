@@ -91,33 +91,14 @@ Before you begin, ensure you have:
    - Name: "Inbox Toll"
    - Authorized redirect URIs: `http://localhost:8888` (for local OAuth flow)
    - Click **Create**
-5. Copy the **Client ID** and **Client Secret**
+5. Download the credentials JSON by clicking the download icon (⬇️) next to your newly created OAuth 2.0 Client ID. Set the contents of this file as your `GMAIL_CREDENTIALS_JSON` environment variable (as a single-line JSON string).
 
-### Step 4: Create Credentials JSON
-
-Create a JSON file with this structure:
-
-```json
-{
-  "web": {
-    "client_id": "YOUR_CLIENT_ID.apps.googleusercontent.com",
-    "client_secret": "YOUR_CLIENT_SECRET",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "redirect_uris": ["http://localhost:8888"]
-  }
-}
-```
-
-Set this as your `GMAIL_CREDENTIALS_JSON` environment variable (as a single-line JSON string).
-
-### Step 5: First-Time OAuth Authorization
+### Step 4: First-Time OAuth Authorization
 
 On first run, the application will:
 1. Open a browser window for Google OAuth consent
 2. You'll authorize the app to access your Gmail
-3. Tokens will be saved to `tokens/` directory (created automatically)
+3. Tokens will be saved to `tokens/` directory (created automatically and git ignored)
 
 **Note:** The first authorization happens automatically when the app starts. Make sure port 8888 is available for the OAuth callback.
 
