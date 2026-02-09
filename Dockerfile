@@ -3,15 +3,17 @@ FROM eclipse-temurin:23-jdk-alpine AS build
 
 WORKDIR /app
 
-# Copy Gradle files
-COPY build.gradle settings.gradle ./
+# Copy Gradle wrapper and build files
+COPY gradlew ./
 COPY gradle ./gradle
+COPY build.gradle settings.gradle ./
 
 # Download dependencies
 RUN ./gradlew dependencies --no-daemon || true
 
 # Copy source code
 COPY src ./src
+COPY config ./config
 
 # Build application
 RUN ./gradlew build -x test --no-daemon

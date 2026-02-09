@@ -45,14 +45,8 @@ Payments go directly to your Stripe account - no intermediaries, no platform fee
 
 6. **Start the service:**
    ```bash
-   docker-compose up -d
+   docker compose up
    ```
-
-7. **Check logs:**
-   ```bash
-   docker-compose logs -f app
-   ```
-
 ## Prerequisites
 
 Before you begin, ensure you have:
@@ -89,7 +83,8 @@ Before you begin, ensure you have:
 4. Back at Credentials, create OAuth client ID:
    - Application type: **Web application**
    - Name: "Inbox Toll"
-   - Authorized redirect URIs: `http://localhost:8888` (for local OAuth flow)
+   - Authorized redirect URIs: `http://localhost:8888/Callback` (for local OAuth flow)
+     - **Important**: The URI must match exactly. Google requires an exact match between what's registered here and what the OAuth flow uses. The default callback path is `/Callback` (case-sensitive).
    - Click **Create**
 5. Download the credentials JSON by clicking the download icon (⬇️) next to your newly created OAuth 2.0 Client ID. Set the contents of this file as your `GMAIL_CREDENTIALS_JSON` environment variable (as a single-line JSON string).
 
@@ -98,9 +93,11 @@ Before you begin, ensure you have:
 On first run, the application will:
 1. Open a browser window for Google OAuth consent
 2. You'll authorize the app to access your Gmail
-3. Tokens will be saved to `tokens/` directory (created automatically and git ignored)
+3. Tokens will be saved:
+   - **Docker**: Stored in a container volume (`inbox_toll_tokens`). Not visible on the host; they persist across restarts as long as you don't run `docker compose down -v`.
+   - **Local** (`./gradlew bootRun`): Saved to a `tokens/` directory in the project (created automatically, git ignored).
 
-**Note:** The first authorization happens automatically when the app starts. Make sure port 8888 is available for the OAuth callback.
+**Note:** The first authorization happens automatically when the app starts. When using Docker, ensure port 8888 is exposed (it's included in the default docker-compose) so the OAuth callback can reach the app.
 
 ## Stripe Setup
 
@@ -239,6 +236,14 @@ Each sender gets a Stripe Customer object with a balance (like a prepaid wallet)
 - **Debits** (positive balance): When toll is charged
 - **Money flows**: Directly to your Stripe account (no Connect needed)
 
+### Balance Top-Up Details
+
+When a sender has insufficient balance to cover the toll, the system creates a Stripe Checkout session for them to top up their balance. The sender pays a minimum of $1.00 (or the toll amount, whichever is higher). Stripe processing fees (2.9% + $0.30) are deducted from the payment, and the net amount is credited to the sender's Stripe Customer balance as prepaid credit. After the top-up is completed, the original toll is automatically debited from the newly credited balance and the held email is moved to the inbox. Any remaining credit carries over for future emails from that sender.
+
+### Known Limitations
+
+**Per-Instance Balance Scope**: This toll functionality was originally part a SaaS side project I was building. Sender balances could be pooled across recipients on my platform. Now that I've pulled out into a self-hosted service, each user runs their own instance with their own Stripe account, so a sender's balance is scoped to the single person they are trying to email. If the same sender emails two different people who each run Inbox Toll, they must top up separately with each -- balances do not transfer or share across instances. This breaks the experience when a real human is the sender but _probably_ still works to protect against unwanted bot or agent spam.
+
 ## Architecture
 
 ```
@@ -295,7 +300,11 @@ Each sender gets a Stripe Customer object with a balance (like a prepaid wallet)
 - **Solution**: Change the port in `GmailConfig.java` or stop the service using that port
 
 **Problem**: Tokens not persisting
-- **Solution**: Ensure the `tokens/` directory is writable and persists between container restarts
+- **Docker**: Tokens live in the `inbox_toll_tokens` volume. Avoid `docker compose down -v` (the `-v` flag removes volumes). If you've already removed the volume, re-run the OAuth flow.
+- **Local**: Ensure the `tokens/` directory is writable.
+
+**Problem**: "You can't sign in to this app because it doesn't comply with Google's OAuth 2.0 policy" / redirect_uri mismatch
+- **Solution**: In Google Cloud Console > APIs & Services > Credentials > your OAuth client, ensure `http://localhost:8888/Callback` is listed under "Authorized redirect URIs". The URI must match exactly (case-sensitive). Check the application logs for the actual redirect URI being used if you're unsure.
 
 ### Stripe Webhook Issues
 
@@ -352,12 +361,20 @@ Each sender gets a Stripe Customer object with a balance (like a prepaid wallet)
 
 ## License
 
-[Add your license here]
+This project is licensed under the **MIT License**.
+
+You are free to use, modify, and distribute this software with attribution. See the `LICENSE` file for the full license text.
 
 ## Contributing
 
-[Add contribution guidelines here]
+Contributions are welcome.
+
+- Fork the repository and create a branch for your change.
+- Run `./gradlew test` before opening a PR.
 
 ## Support
 
-[Add support information here]
+If you need help, have a bug report, or want to request a feature:
+
+- **Open an issue** in this repository with clear steps to reproduce (for bugs), expected behavior, and relevant logs/config details.
+- For security-sensitive reports, avoid posting secrets or private credentials in public issues.

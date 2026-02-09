@@ -23,9 +23,15 @@ public class PostgresConfig {
   @Value("${spring.datasource.url}")
   private String databaseUrl;
 
+  @Value("${spring.datasource.username}")
+  private String databaseUsername;
+
+  @Value("${spring.datasource.password}")
+  private String databasePassword;
+
   @Bean
   DataSource dataSource() throws URISyntaxException {
-    return buildDataSource(databaseUrl, 20);
+    return buildDataSource(databaseUrl, databaseUsername, databasePassword, 20);
   }
 
   @Bean
@@ -48,18 +54,43 @@ public class PostgresConfig {
     return new DataSourceTransactionManager(dataSource);
   }
 
-  public static DataSource buildDataSource(String databaseUrl, int poolSize)
+  public static DataSource buildDataSource(
+      String databaseUrl, String username, String password, int poolSize)
       throws URISyntaxException {
-    URI dbUri = new URI(databaseUrl);
     var dataSource = new org.apache.tomcat.jdbc.pool.DataSource();
-    String username = dbUri.getUserInfo().split(":")[0];
-    String password = dbUri.getUserInfo().split(":")[1];
-    String dbUrl =
-        StringUtils.join(
-            "jdbc:postgresql://", dbUri.getHost(), ":", dbUri.getPort(), dbUri.getPath());
+    String dbUrl;
+    String dbUsername;
+    String dbPassword;
+
+    // Check if URL is already in JDBC format (e.g., jdbc:postgresql://host:port/db)
+    if (databaseUrl.startsWith("jdbc:")) {
+      // Use JDBC URL directly and use provided username/password
+      dbUrl = databaseUrl;
+      dbUsername = username;
+      dbPassword = password;
+    } else {
+      // Legacy format: postgres://user:pass@host:port/db
+      // Parse credentials from URI
+      URI dbUri = new URI(databaseUrl);
+      String userInfo = dbUri.getUserInfo();
+      if (userInfo != null && userInfo.contains(":")) {
+        String[] credentials = userInfo.split(":", 2);
+        dbUsername = credentials[0];
+        dbPassword = credentials.length > 1 ? credentials[1] : "";
+      } else {
+        // Fallback to provided username/password if URI doesn't have userInfo
+        dbUsername = username;
+        dbPassword = password;
+      }
+      // Construct JDBC URL from URI components
+      dbUrl =
+          StringUtils.join(
+              "jdbc:postgresql://", dbUri.getHost(), ":", dbUri.getPort(), dbUri.getPath());
+    }
+
     dataSource.setUrl(dbUrl);
-    dataSource.setUsername(username);
-    dataSource.setPassword(password);
+    dataSource.setUsername(dbUsername);
+    dataSource.setPassword(dbPassword);
     dataSource.setInitialSize(poolSize);
     dataSource.setMaxActive(poolSize);
     dataSource.setMinIdle(poolSize);

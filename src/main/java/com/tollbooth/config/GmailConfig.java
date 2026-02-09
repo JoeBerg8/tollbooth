@@ -67,7 +67,9 @@ public class GmailConfig {
       logger.warn(
           "No existing credentials found. OAuth flow will be triggered. "
               + "Make sure port 8888 is accessible for the callback.");
-      LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
+      LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).setCallbackPath("/").build();
+      String redirectUri = receiver.getRedirectUri();
+      logger.info("OAuth redirect URI: " + redirectUri + " - Make sure this exact URI is registered in Google Cloud Console");
       credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize(gmailEmail);
     }
 
