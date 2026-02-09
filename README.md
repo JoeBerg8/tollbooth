@@ -1,6 +1,6 @@
 # Inbox Toll
 
-A self-hosted service that charges email senders a small fee (toll) to reach your Gmail inbox. Acts as a spam deterrent - senders willing to pay are more likely to be legitimate.
+A self-hosted, headless service that charges email senders a small fee (toll) to reach your Gmail inbox. Acts as a spam deterrent - senders willing to pay are more likely to be legitimate.
 
 ## What is Inbox Toll?
 
