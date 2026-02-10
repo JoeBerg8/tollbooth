@@ -253,7 +253,7 @@ When a sender has insufficient balance to cover the toll, the system creates a S
 
 ### Known Limitations
 
-**Per-Instance Balance Scope**: This toll functionality was originally part a SaaS side project I was building. Sender balances could be pooled across recipients on my platform. Now that I've pulled out into a self-hosted service, each user runs their own instance with their own Stripe account, so a sender's balance is scoped to the single person they are trying to email. If the same sender emails two different people who each run Inbox Toll, they must top up separately with each -- balances do not transfer or share across instances. This breaks the experience when a real human is the sender but _probably_ still works to protect against unwanted bot or agent spam.
+**Per-Instance Balance Scope**: This toll functionality was originally part a SaaS side project I was building. Sender balances could be pooled across recipients on my platform. Now that I've pulled it out into a self-hosted service, each user runs their own instance with their own Stripe account, so a sender's balance is scoped to the single person they are trying to email. If the same sender emails two different people who each run Inbox Toll, they must top up separately with each -- balances do not transfer or share across instances. This breaks the experience when a real human is the sender but _probably_ still works to protect against unwanted bot or agent spam.
 
 ## Architecture
 
