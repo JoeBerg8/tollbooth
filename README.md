@@ -202,7 +202,7 @@ sequenceDiagram
     participant Stripe as "Your Stripe Account"
     participant Sender
 
-    Note over Gmail,InboxToll: Every 1 min (polling; Gmail Pub/Sub enables real-time push)
+    Note over Gmail,InboxToll: Polls every 1 min - Gmail Pub/Sub enables real-time push
     Gmail->>InboxToll: New email from unknown sender
     InboxToll->>InboxToll: Whitelist check (4 rules)
     alt Sender is whitelisted
