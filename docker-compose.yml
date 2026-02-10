@@ -49,6 +49,8 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
       
       # Toll Configuration
+      # When true, no live actions (Stripe/Gmail/DB); set false for real toll processing
+      DRY_RUN: ${DRY_RUN:-true}
       # Amount to charge senders in dollars (default: $0.25)
       TOLL_AMOUNT: ${TOLL_AMOUNT:-0.25}
       # Comma-separated list of domains exempt from toll (e.g., "example.com,partner.org")

@@ -6,7 +6,7 @@ A self-hosted, headless service that charges email senders a small fee (toll) to
 
 Inbox Toll protects your Gmail inbox by requiring senders to pay a small fee (default $0.25) before their email reaches your inbox. The system:
 
-- **Polls your Gmail** every minute for new emails
+- **Polls your Gmail** every minute for new emails (the 1-minute interval is a placeholder; Gmail Pub/Sub can be used for near real-time push notifications)
 - **Checks whitelist rules** to exempt known senders
 - **Charges senders** via Stripe if they're not whitelisted
 - **Archives emails** until payment is received
@@ -202,7 +202,7 @@ sequenceDiagram
     participant Stripe as "Your Stripe Account"
     participant Sender
 
-    Note over Gmail,InboxToll: Every 1 minute (polling)
+    Note over Gmail,InboxToll: Every 1 min (polling; Gmail Pub/Sub enables real-time push)
     Gmail->>InboxToll: New email from unknown sender
     InboxToll->>InboxToll: Whitelist check (4 rules)
     alt Sender is whitelisted
@@ -226,6 +226,8 @@ sequenceDiagram
     InboxToll->>Stripe: Debit toll amount
     InboxToll->>Gmail: Move to inbox + "Toll Paid" label
 ```
+
+**Gmail labels** (created automatically): *Awaiting Toll* (archived, payment pending) and *Toll Paid* (delivered to inbox).
 
 ### Detailed Steps
 
@@ -258,7 +260,7 @@ When a sender has insufficient balance to cover the toll, the system creates a S
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Gmail API                             │
-│              (Polling every 1 minute)                    │
+│   (Polling ~1 min; Pub/Sub enables real-time)            │
 └───────────────────┬─────────────────────────────────────┘
                     │
                     ▼
