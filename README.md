@@ -6,13 +6,13 @@ A self-hosted, headless service that charges email senders a small fee (toll) to
 
 Inbox Toll protects your Gmail inbox by requiring senders to pay a small fee (default $0.25) before their email reaches your inbox. The system:
 
-- **Polls your Gmail** every minute for new emails (the 1-minute interval is a placeholder; Gmail Pub/Sub can be used for near real-time push notifications)
+- **Polls your Gmail** every minute for new emails (the 1-minute interval is a placeholder; Gmail has a Pub/Sub that can be used for near real-time push notifications (not implemented))
 - **Checks whitelist rules** to exempt known senders
 - **Charges senders** via Stripe if they're not whitelisted
 - **Archives emails** until payment is received
 - **Moves emails to inbox** once payment is confirmed
 
-Payments go directly to your Stripe account - no intermediaries, no platform fees beyond Stripe's standard processing fees.
+Payments go directly to your Stripe account - no intermediaries, no platform fees beyond Stripe's standard processing fees. Stripe fees are paid for by the sender, not the inbox owner. 
 
 ## Quick Start
 
