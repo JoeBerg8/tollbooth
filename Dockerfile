@@ -23,17 +23,16 @@ FROM eclipse-temurin:23-jre-alpine
 
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -S appuser && adduser -S appuser -G appuser
+# Create non-root user and install su-exec for privilege drop
+RUN addgroup -S appuser && adduser -S appuser -G appuser && \
+    apk add --no-cache su-exec
 
 # Copy built JAR
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# Change ownership
 RUN chown -R appuser:appuser /app
-
-USER appuser
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Fix tokens dir ownership (volume mounts as root) then drop to appuser
+ENTRYPOINT ["/bin/sh", "-c", "mkdir -p /app/tokens && chown -R appuser:appuser /app/tokens && exec su-exec appuser java -jar /app/app.jar"]

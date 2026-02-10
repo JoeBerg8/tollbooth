@@ -5,6 +5,7 @@ import com.google.api.services.gmail.model.Message;
 import com.tollbooth.config.TollProperties;
 import com.tollbooth.gmail.GmailService;
 import com.tollbooth.stripe.StripeService;
+import jakarta.annotation.PostConstruct;
 import java.time.Instant;
 import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
@@ -28,6 +29,15 @@ public class TollService {
   @Autowired private TollProperties tollProperties;
 
   @Autowired private TollEmailTemplateService emailTemplateService;
+
+  @PostConstruct
+  public void logDryRunStatus() {
+    if (tollProperties.isDryRun()) {
+      logger.warn(
+          "DRY RUN is enabled: no Stripe, Gmail, or database writes will be performed. "
+              + "Set DRY_RUN=false to enable live toll processing.");
+    }
+  }
 
   /**
    * Processes an email for toll payment. Checks whitelist, balance, and either debits immediately
@@ -57,8 +67,25 @@ public class TollService {
       if (whitelistService.isSenderWhitelisted(gmailClient, senderEmail, fullMessage)) {
         logger.debug(
             "Sender {} is whitelisted, skipping toll for message {}", senderEmail, messageId);
-        // Still record that we processed this email
+        if (tollProperties.isDryRun()) {
+          logger.info(
+              "DRY RUN: would skip toll for message {} (whitelisted sender {})",
+              messageId,
+              senderEmail);
+          return true;
+        }
         recordEmailProcessed(messageId, senderEmail, null, false);
+        return true;
+      }
+
+      if (tollProperties.isDryRun()) {
+        double tollAmount = tollProperties.getTollAmount();
+        logger.info(
+            "DRY RUN: would process toll for message {} from {} (ensure label, get/create "
+                + "customer, check balance, debit or send top-up; toll amount ${})",
+            messageId,
+            senderEmail,
+            tollAmount);
         return true;
       }
 
@@ -144,6 +171,15 @@ public class TollService {
   public boolean processTollPaymentAfterTopUp(
       Gmail gmailClient, String messageId, double tollAmount) {
     try {
+      if (tollProperties.isDryRun()) {
+        logger.info(
+            "DRY RUN: would process toll payment after top-up for message {} (amount ${}); "
+                + "skipping credit, debit, and Gmail move",
+            messageId,
+            tollAmount);
+        return true;
+      }
+
       // Get the email meta record
       java.util.Optional<TollEmailMeta> emailMetaOpt = tollEmailMetaDao.findByGmailId(messageId);
       if (emailMetaOpt.isEmpty()) {

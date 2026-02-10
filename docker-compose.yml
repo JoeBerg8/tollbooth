@@ -72,7 +72,7 @@ services:
       TOLL_EMAIL_FROM_NAME: ${TOLL_EMAIL_FROM_NAME:-}
     ports:
       - "${PORT:-8080}:8080"
-      - "8888:8888"  # OAuth callback (LocalServerReceiver)
+      - "8899:8899"  # OAuth callback (LocalServerReceiver)
     volumes:
       - inbox_toll_tokens:/app/tokens
 

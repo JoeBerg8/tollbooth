@@ -40,3 +40,4 @@ toll:
   email-subject: ${TOLL_EMAIL_SUBJECT:Payment required to reach my inbox}
   email-body: ${TOLL_EMAIL_BODY:}
   email-from-name: ${TOLL_EMAIL_FROM_NAME:}
+  dry-run: ${DRY_RUN:true}

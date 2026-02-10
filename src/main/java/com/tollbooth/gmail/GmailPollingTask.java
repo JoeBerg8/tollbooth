@@ -19,8 +19,10 @@ import org.springframework.stereotype.Component;
 public class GmailPollingTask {
 
   private static final Logger logger = LogManager.getLogger(GmailPollingTask.class);
+  private static final String OAUTH_PENDING_MESSAGE = "OAuth authorization pending";
 
   private final AtomicBoolean isProcessing = new AtomicBoolean(false);
+  private final AtomicBoolean oauthPauseLogged = new AtomicBoolean(false);
   private Instant lastRunAt = null;
 
   @Autowired private GmailConfig gmailConfig;
@@ -45,6 +47,7 @@ public class GmailPollingTask {
       logger.debug("Starting Gmail polling task");
 
       Gmail gmailClient = gmailConfig.getGmailClient();
+      oauthPauseLogged.set(false);
       String userEmail = gmailConfig.getGmailEmail();
 
       // Build date query
@@ -95,6 +98,16 @@ public class GmailPollingTask {
       logger.info("Completed Gmail polling task, processed {} messages", messages.size());
 
     } catch (IOException e) {
+      if (e.getMessage() != null && e.getMessage().contains(OAUTH_PENDING_MESSAGE)) {
+        if (oauthPauseLogged.compareAndSet(false, true)) {
+          logger.warn(
+              "Polling paused while OAuth is pending. Complete the existing OAuth flow to "
+                  + "create tokens, then polling will resume.");
+        } else {
+          logger.debug("Polling still paused while OAuth is pending");
+        }
+        return;
+      }
       logger.error("Error polling Gmail: {}", e.getMessage(), e);
     } catch (Exception e) {
       logger.error("Unexpected error in Gmail polling task", e);

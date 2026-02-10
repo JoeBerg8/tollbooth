@@ -8,6 +8,7 @@ import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
 import com.tollbooth.config.GmailConfig;
 import com.tollbooth.config.StripeConfig;
+import com.tollbooth.config.TollProperties;
 import com.tollbooth.toll.TollService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
@@ -36,6 +37,8 @@ public class StripeWebhookController {
   @Autowired private TollService tollService;
 
   @Autowired private GmailConfig gmailConfig;
+
+  @Autowired private TollProperties tollProperties;
 
   /**
    * Webhook endpoint for Stripe events. Handles checkout.session.completed for toll top-ups.
@@ -105,6 +108,21 @@ public class StripeWebhookController {
 
       if (senderCustomerId == null || messageId == null || tollAmountAtTopUp == null) {
         logger.warn("Missing required metadata for balance top-up session {}", session.getId());
+        return;
+      }
+
+      if (tollProperties.isDryRun()) {
+        long grossAmountCentsDry = session.getAmountTotal();
+        long feeDry = Math.round(grossAmountCentsDry * 0.029) + 30;
+        long netAmountCentsDry = grossAmountCentsDry - feeDry;
+        double netAmountDollarsDry = netAmountCentsDry / 100.0;
+        logger.info(
+            "DRY RUN: skipped live webhook processing for session {} (would credit ${} to sender {}, "
+                + "then process toll for message {})",
+            session.getId(),
+            netAmountDollarsDry,
+            senderEmail,
+            messageId);
         return;
       }
 

@@ -1,6 +1,6 @@
 # Inbox Toll
 
-A self-hosted, headless service that charges email senders a small fee (toll) to reach your Gmail inbox. Acts as a spam deterrent - senders willing to pay are more likely to be legitimate.
+A self-hosted, headless service that charges email senders a small fee (toll) to reach your Gmail inbox. Acts as a spam deterrent - senders willing to pay are more likely to be legitimate. (see [Known Limitations](#known-limitations) below) 
 
 ## What is Inbox Toll?
 
@@ -41,6 +41,8 @@ Payments go directly to your Stripe account - no intermediaries, no platform fee
    STRIPE_WEBHOOK_SECRET=whsec_...
    TOLL_SUCCESS_URL=https://your-domain.com/success
    TOLL_CANCEL_URL=https://your-domain.com/cancel
+   # DRY_RUN defaults to true; set to false only when you want live toll processing (see Safety / Live Mode below)
+   DRY_RUN=true
    ```
 
 6. **Start the service:**
@@ -83,7 +85,7 @@ Before you begin, ensure you have:
 4. Back at Credentials, create OAuth client ID:
    - Application type: **Web application**
    - Name: "Inbox Toll"
-   - Authorized redirect URIs: `http://localhost:8888/Callback` (for local OAuth flow)
+   - Authorized redirect URIs: `http://localhost:8899/Callback` (for local OAuth flow)
      - **Important**: The URI must match exactly. Google requires an exact match between what's registered here and what the OAuth flow uses. The default callback path is `/Callback` (case-sensitive).
    - Click **Create**
 5. Download the credentials JSON by clicking the download icon (⬇️) next to your newly created OAuth 2.0 Client ID. Set the contents of this file as your `GMAIL_CREDENTIALS_JSON` environment variable (as a single-line JSON string).
@@ -97,7 +99,7 @@ On first run, the application will:
    - **Docker**: Stored in a container volume (`inbox_toll_tokens`). Not visible on the host; they persist across restarts as long as you don't run `docker compose down -v`.
    - **Local** (`./gradlew bootRun`): Saved to a `tokens/` directory in the project (created automatically, git ignored).
 
-**Note:** The first authorization happens automatically when the app starts. When using Docker, ensure port 8888 is exposed (it's included in the default docker-compose) so the OAuth callback can reach the app.
+**Note:** The first authorization happens automatically when the app starts. When using Docker, ensure port 8899 is exposed (it's included in the default docker compose) so the OAuth callback can reach the app.
 
 ## Stripe Setup
 
@@ -155,6 +157,13 @@ All configuration is done via environment variables:
 | `DATABASE_USER` | ❌ | `postgres` | PostgreSQL username | `postgres` |
 | `DATABASE_PASSWORD` | ❌ | `postgres` | PostgreSQL password | `postgres` |
 | `PORT` | ❌ | `8080` | Application port | `8080` |
+| `DRY_RUN` | ❌ | `true` | When true, no Stripe/Gmail/DB writes occur; set to `false` to enable live toll processing | `false` |
+
+### Safety / Live Mode
+
+The app starts in **dry-run mode** by default (`DRY_RUN=true`). In this mode it does not perform any live actions: no Stripe charges or credits, no Gmail archiving/moving/sending, and no toll-related database writes. The service still polls Gmail and evaluates whitelist rules; it logs what it *would* do instead of doing it. This lets you verify configuration and behavior before enabling live mode.
+
+To run with real toll processing (charge senders, move emails, process webhooks), set **`DRY_RUN=false`** in your environment. Only do this after you have confirmed your Stripe and Gmail setup.
 
 ### Email Template Placeholders
 
@@ -296,7 +305,7 @@ When a sender has insufficient balance to cover the toll, the system creates a S
 **Problem**: "OAuth consent screen" errors
 - **Solution**: Make sure you've added your Gmail address as a test user in the OAuth consent screen
 
-**Problem**: Port 8888 already in use
+**Problem**: Port 8899 already in use
 - **Solution**: Change the port in `GmailConfig.java` or stop the service using that port
 
 **Problem**: Tokens not persisting
@@ -304,7 +313,7 @@ When a sender has insufficient balance to cover the toll, the system creates a S
 - **Local**: Ensure the `tokens/` directory is writable.
 
 **Problem**: "You can't sign in to this app because it doesn't comply with Google's OAuth 2.0 policy" / redirect_uri mismatch
-- **Solution**: In Google Cloud Console > APIs & Services > Credentials > your OAuth client, ensure `http://localhost:8888/Callback` is listed under "Authorized redirect URIs". The URI must match exactly (case-sensitive). Check the application logs for the actual redirect URI being used if you're unsure.
+- **Solution**: In Google Cloud Console > APIs & Services > Credentials > your OAuth client, ensure `http://localhost:8899/Callback` is listed under "Authorized redirect URIs". The URI must match exactly (case-sensitive). Check the application logs for the actual redirect URI being used if you're unsure.
 
 ### Stripe Webhook Issues
 
@@ -321,7 +330,7 @@ When a sender has insufficient balance to cover the toll, the system creates a S
 
 **Problem**: Emails not being processed
 - **Solution**: 
-  - Check application logs: `docker-compose logs -f app`
+  - Check application logs: `docker compose logs -f app`
   - Verify Gmail polling is running (should see "Starting Gmail polling task" every minute)
   - Check if emails are already processed (deduplication prevents reprocessing)
 
@@ -335,9 +344,9 @@ When a sender has insufficient balance to cover the toll, the system creates a S
 
 **Problem**: Database connection errors
 - **Solution**:
-  - Verify PostgreSQL container is running: `docker-compose ps`
+  - Verify PostgreSQL container is running: `docker compose ps`
   - Check database credentials in environment variables
-  - Ensure database is healthy: `docker-compose logs db`
+  - Ensure database is healthy: `docker compose logs db`
 
 ## Development
 

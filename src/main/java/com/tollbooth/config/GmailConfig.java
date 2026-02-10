@@ -17,10 +17,12 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.BindException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +35,7 @@ public class GmailConfig {
   private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
   private static final List<String> SCOPES = Collections.singletonList(GmailScopes.GMAIL_MODIFY);
   private static final String TOKENS_DIRECTORY_PATH = "tokens";
+  private static final AtomicBoolean oauthAttemptedWithoutTokens = new AtomicBoolean(false);
 
   @Value("${gmail.credentials-json}")
   private String credentialsJson;
@@ -62,15 +65,41 @@ public class GmailConfig {
     // Try to load existing credentials
     Credential credential = flow.loadCredential(gmailEmail);
 
+    if (credential != null && credential.getRefreshToken() != null) {
+      oauthAttemptedWithoutTokens.set(false);
+    }
+
     // If no existing credentials, trigger OAuth flow
     if (credential == null || credential.getRefreshToken() == null) {
+      if (!oauthAttemptedWithoutTokens.compareAndSet(false, true)) {
+        throw new IOException(
+            "OAuth authorization pending. Complete the existing browser authorization flow to "
+                + "populate tokens before polling continues.");
+      }
       logger.warn(
           "No existing credentials found. OAuth flow will be triggered. "
-              + "Make sure port 8888 is accessible for the callback.");
-      LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).setCallbackPath("/").build();
-      String redirectUri = receiver.getRedirectUri();
-      logger.info("OAuth redirect URI: " + redirectUri + " - Make sure this exact URI is registered in Google Cloud Console");
-      credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize(gmailEmail);
+              + "Make sure port 8899 is accessible for the callback.");
+      LocalServerReceiver receiver =
+          new LocalServerReceiver.Builder()
+              .setHost("localhost")
+              .setPort(8899)
+              .setCallbackPath("/Callback")
+              .build();
+      logger.info(
+          "OAuth redirect URI: "
+              + "http://localhost:8899/Callback"
+              + " - Make sure this exact URI is registered in Google Cloud Console");
+      try {
+        credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize(gmailEmail);
+        if (credential != null && credential.getRefreshToken() != null) {
+          oauthAttemptedWithoutTokens.set(false);
+        }
+      } catch (BindException e) {
+        throw new IOException(
+            "OAuth callback port 8899 is already in use. Complete any existing OAuth browser "
+                + "flow, then retry.",
+            e);
+      }
     }
 
     return new Gmail.Builder(httpTransport, JSON_FACTORY, credential)
